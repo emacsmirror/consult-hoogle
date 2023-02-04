@@ -6,6 +6,8 @@
 Use `M-x consult-hoogle` to begin a hoogle search. The resulting interface looks like this:
 ![Screenshot](consult-hoogle.png)
 
+*consult-hoogle* supports [cabal-hoogle](https://github.com/kokobd/cabal-hoogle). If the current project has a local hoogle database, you can use `M-x consult-hoogle-cabal` to search it.
+
 By default it shows the documentation of the selected candidate in a separate window. The documentation window can be turned by calling `consult-hoogle` with a prefix arg. Where the documentation window appears can be configured by adding an entry to `display-buffer-alist` for `" *Hoogle Documentation*"`.
 
 If you are using [vertico](https://github.com/minad/vertico) along with extensions, then using `vertico-buffer-mode`, the candidates and the documentation window can be arranged to appear side by side.
