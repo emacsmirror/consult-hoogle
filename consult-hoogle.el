@@ -50,8 +50,8 @@
   "Build command line given CONFIG and INPUT."
   (pcase-let ((`(,arg . ,opts) (consult--command-split input)))
     (unless (string-blank-p arg)
-      (list :command (append (split-string-and-unquote consult-hoogle-args) (list arg) opts)
-            :highlight (cdr (consult--default-regexp-compiler input 'basic t))))))
+      (cons (append (split-string-and-unquote consult-hoogle-args) (list arg) opts)
+            (cdr (consult--default-regexp-compiler input 'basic t))))))
 
 (defun consult-hoogle--format (lines) "Format the LINES from hoogle result."
        (seq-map #'consult-hoogle--format-result lines))
