@@ -6,7 +6,7 @@
 ;; Version: 0.0.1
 ;; Keywords: docs languages
 ;; Homepage: https://github.com/aikrahguzar/consult-hoogle
-;; Package-Requires: ((emacs "27.1"))
+;; Package-Requires: ((emacs "27.1") (haskell-mode "16.1"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
