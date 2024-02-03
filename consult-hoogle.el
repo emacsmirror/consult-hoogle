@@ -24,15 +24,22 @@
 
 ;;;; Variables
 (defcustom consult-hoogle-args
-  "hoogle search --jsonl -q --count=250"
-  "The hoogle invocation used to get results."
-  :type 'string
+  '("hoogle" . ("search" "--jsonl" "-q" "--count=250"))
+  "The hoogle invocation used to get results.
+It is should be a cons (COMMAND . ARGS). COMMAND should be valid executable.
+It is called arguments ARGS with the search query appended.  It should produce
+search results in JSON lines format."
+  :type '(cons (string :tag "Hoogle command")
+               (repeat :tag "Args for hoogle" string))
   :group 'consult)
 
-(defcustom consult-hoogle-cabal-args
-  "cabal-hoogle run -- search --jsonl -q --count=250"
-  "The cabal-hoogle invocation used to get results for cabal hoogle."
-  :type 'string
+(defcustom consult-hoogle-project-args
+  '("cabal-hoogle" . ("run" "--" "search" "--jsonl" "-q" "--count=250"))
+  "The cabal-hoogle invocation used to get results for current project.
+It should be cons (COMMAND . ARGS). See `consult-hoogle-args' for details.  By
+default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
+  :type '(cons (string :tag "Project specific hoogle command")
+               (repeat :tag "Args for hoogle" string))
   :group 'consult)
 
 (defcustom consult-hoogle-show-module-and-package t
@@ -59,11 +66,10 @@
 
 ;;;; Constructing the string to display
 (defun consult-hoogle--builder (input)
-  "Build command line given CONFIG and INPUT."
+  "Build command line given INPUT."
   (pcase-let ((`(,arg . ,opts) (consult--command-split input)))
     (unless (string-blank-p arg)
-      (cons (append (split-string-and-unquote consult-hoogle-args)
-                    (list arg) opts)
+      (cons (append consult-hoogle-args (list arg) opts)
             (cdr (consult--default-regexp-compiler input 'basic t))))))
 
 (defun consult-hoogle--format (lines)
@@ -255,14 +261,15 @@ window. This can be disabled by a prefix ARG."
         (consult-hoogle--search #'consult-hoogle--show-details)))))
 
 ;;;###autoload
-(defun consult-hoogle-cabal (arg)
+(defun consult-hoogle-project (arg)
   "Search the local hoogle database for current project.
-Uses cabal-hoogle and the database should have been generated
-by running `cabal-hoogle generate'.
+By default uses cabal-hoogle and the database should have been generated
+by running `cabal-hoogle generate'.  `consult-hoogle-project-args' can be
+customized to configure an alternate command.
 By default this shows the documentation for the current candidate in a side
 window. This can be disabled by a prefix ARG."
   (interactive (list current-prefix-arg))
-  (let ((consult-hoogle-args consult-hoogle-cabal-args)
+  (let ((consult-hoogle-args consult-hoogle-project-args)
         (default-directory (haskell-cabal-find-dir)))
     (consult-hoogle arg)))
 
