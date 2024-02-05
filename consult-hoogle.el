@@ -8,13 +8,14 @@
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
 ;; Package-Requires: ((emacs "27.1") (haskell-mode "16.1"))
-;;
+
 ;; This file is part of GNU Emacs.
-;;
+
 ;;; Commentary:
+
 ;; Search the local hoogle database from Emacs using the nicities provided by
 ;; consult.
-;;
+
 ;;; Code:
 
 ;;;; Packages
@@ -31,7 +32,7 @@
 (defcustom consult-hoogle-args
   '("hoogle" . ("search" "--jsonl" "-q" "--count=250"))
   "The hoogle invocation used to get results.
-It is should be a cons (COMMAND . ARGS). COMMAND should be valid executable.
+It is should be a cons (COMMAND . ARGS).  COMMAND should be valid executable.
 It is called arguments ARGS with the search query appended.  It should produce
 search results in JSON lines format."
   :type '(cons (string :tag "Hoogle command")
@@ -247,7 +248,7 @@ STATE is the optional state function passed to the `consult--read'."
 (defun consult-hoogle (arg)
   "Search the local hoogle database.
 By default this shows the documentation for the current candidate in a side
-window. This can be disabled by a prefix ARG."
+window.  This can be disabled by a prefix ARG."
   (interactive (list current-prefix-arg))
   (if arg (consult-hoogle--search)
     (let* ((buf (get-buffer-create " *Hoogle Documentation*" t))
@@ -269,7 +270,7 @@ By default uses cabal-hoogle and the database should have been generated
 by running `cabal-hoogle generate'.  `consult-hoogle-project-args' can be
 customized to configure an alternate command.
 By default this shows the documentation for the current candidate in a side
-window. This can be disabled by a prefix ARG."
+window.  This can be disabled by a prefix ARG."
   (interactive (list current-prefix-arg))
   (let ((consult-hoogle-args consult-hoogle-project-args)
         (default-directory (haskell-cabal-find-dir)))
@@ -302,13 +303,15 @@ window. This can be disabled by a prefix ARG."
     (scroll-up arg)))
 
 (defun consult-hoogle-restrict-to-package (package &optional arg)
-  "Restrict the search to PACKAGE. With prefix ARG exluce package from search."
+  "Restrict the search to PACKAGE.
+With prefix ARG exluce package from search."
   (interactive (list (consult-hoogle--get 'package) current-prefix-arg))
   (when package
     (consult-hoogle--add-to-input (if arg "-" "+") (downcase package))))
 
 (defun consult-hoogle-restrict-to-module (module &optional arg)
-  "Restrict the search to MODULE. With prefix ARG exluce module from search."
+  "Restrict the search to MODULE.
+With prefix ARG exluce module from search."
   (interactive (list (consult-hoogle--get 'module) current-prefix-arg))
   (when module (consult-hoogle--add-to-input (if arg "-" "+") module)))
 
