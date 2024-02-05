@@ -346,11 +346,10 @@ With positive prefix ARG only clear restrictions. With negative prefix
 only clear exclusions."
   (interactive (list (when current-prefix-arg
                        (prefix-numeric-value current-prefix-arg))))
-  (let* ((restriction-rx (rx-to-string `(: ,(if (not arg)
-                                                '(or "+" "-")
-                                              (if (> arg 0) "+" "-"))
-                                         (0+ (not space))
-                                         (or (1+ space) eos)))))
+  (let ((restriction-rx (rx-to-string `(: ,(if (not arg)
+                                               '(or "+" "-")
+                                             (if (> arg 0) "+" "-"))
+                                        (0+ (not space))))))
     (consult-hoogle--modify-async-input
      (lambda (match) (replace-regexp-in-string restriction-rx "" match)))))
 
