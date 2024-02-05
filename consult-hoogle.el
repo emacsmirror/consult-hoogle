@@ -251,12 +251,9 @@ window. This can be disabled by a prefix ARG."
   (interactive (list current-prefix-arg))
   (if arg (consult-hoogle--search)
     (let* ((buf (get-buffer-create " *Hoogle Documentation*" t))
-           (height (if (bound-and-true-p vertico-count)
-                       vertico-count
-                     10))
            (window (display-buffer buf
                                    `(display-buffer-in-side-window
-                                     (window-height . ,(+ 3 height))
+                                     (window-height . 16)
                                      (side . bottom)
                                      (slot . -1)))))
       (with-current-buffer buf
