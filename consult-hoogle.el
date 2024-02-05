@@ -1,14 +1,15 @@
 ;;; consult-hoogle.el --- Hoogle frontend using consult -*- lexical-binding: t; -*-
-;;
+
+;; Copyright (C) 2024 Free Software Foundation, Inc.
+
 ;; Created: April 10, 2022
-;; Modified: April 10, 2022
 ;; License: GPL-3.0-or-later
 ;; Version: 0.0.1
 ;; Keywords: docs languages
-;; Homepage: https://github.com/aikrahguzar/consult-hoogle
+;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
 ;; Package-Requires: ((emacs "27.1") (haskell-mode "16.1"))
 ;;
-;; This file is not part of GNU Emacs.
+;; This file is part of GNU Emacs.
 ;;
 ;;; Commentary:
 ;; Search the local hoogle database from Emacs using the nicities provided by
