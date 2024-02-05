@@ -24,6 +24,10 @@
 (require 'shr)
 
 ;;;; Variables
+(defgroup consult-hoogle nil
+  "A frontend for hoogle."
+  :group 'consult)
+
 (defcustom consult-hoogle-args
   '("hoogle" . ("search" "--jsonl" "-q" "--count=250"))
   "The hoogle invocation used to get results.
@@ -32,7 +36,7 @@ It is called arguments ARGS with the search query appended.  It should produce
 search results in JSON lines format."
   :type '(cons (string :tag "Hoogle command")
                (repeat :tag "Args for hoogle" string))
-  :group 'consult)
+  :group 'consult-hoogle)
 
 (defcustom consult-hoogle-project-args
   '("cabal-hoogle" . ("run" "--" "search" "--jsonl" "-q" "--count=250"))
@@ -41,12 +45,12 @@ It should be cons (COMMAND . ARGS). See `consult-hoogle-args' for details.  By
 default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
   :type '(cons (string :tag "Project specific hoogle command")
                (repeat :tag "Args for hoogle" string))
-  :group 'consult)
+  :group 'consult-hoogle)
 
 (defcustom consult-hoogle-show-module-and-package t
   "Whether to show the package and module in the candidate line."
   :type 'boolean
-  :group 'consult)
+  :group 'consult-hoogle)
 
 (defvar consult-hoogle--history nil
   "Variable to store history for hoogle searches.")
