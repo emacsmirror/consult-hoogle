@@ -4,7 +4,7 @@
 
 ;; Created: April 10, 2022
 ;; License: GPL-3.0-or-later
-;; Version: 0.0.1
+;; Version: 0.1.0
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
 ;; Package-Requires: ((emacs "27.1") (haskell-mode "16.1"))
@@ -223,8 +223,8 @@ STATE is the optional state function passed to the `consult--read'."
   (let ((consult-async-min-input 0)
         (fun (or action (lambda (alist) (consult-hoogle--browse-url 'item alist)))))
     (with-current-buffer (get-buffer-create " *Hoogle Fontification*" t)
-      (let (haskell-mode-hook)
-        (haskell-mode)))
+      (setq-local delay-mode-hooks t)
+      (haskell-mode))
     (unwind-protect
         (funcall fun (consult--read
                       (consult--async-command #'consult-hoogle--builder
