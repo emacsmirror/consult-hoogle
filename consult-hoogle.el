@@ -150,7 +150,9 @@ we use the same buffer throughout."
 (defun consult-hoogle--doc-line (label elem item)
   "Construct a line for doc buffer from LABEL ELEM and ITEM."
   (concat (propertize label 'face 'bold)
-          (if (equal "" elem) item elem)
+          (if (and elem (not (equal elem "")))
+              elem
+            (consult-hoogle--name item))
           "\n"))
 
 (defun consult-hoogle--details (alist)
@@ -163,11 +165,10 @@ we use the same buffer throughout."
                            "Module: " .module.name .item)))
            (item-line (when (equal .type "")
                         (concat .item "\n"))))
-      (insert (concat item-line module-line package-line)))
+      (insert (concat item-line module-line package-line) "\n"))
     (let ((beg (point)))
       (insert .docs)
-      (shr-render-region beg (point-max))
-      (goto-char (point-min)))))
+      (shr-render-region beg (point)))))
 
 (defun consult-hoogle--show-details (action cand)
   "Show the details for the current CAND and handle ACTION."
@@ -175,7 +176,9 @@ we use the same buffer throughout."
              (inhibit-read-only t))
     (erase-buffer)
     (pcase action
-      ('preview (when cand (consult-hoogle--details cand)))
+      ('preview (when cand
+                  (consult-hoogle--details cand)
+                  (goto-char (point-min))))
       ('return (kill-buffer-and-window)))))
 
 ;;;; Refining searches
