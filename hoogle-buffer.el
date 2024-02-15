@@ -70,15 +70,36 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
   (visual-line-mode))
 
 ;;;; Fontification
+(defun hoogle-buffer--pre (dom)
+  "Mark rendering of DOM with pre tag as code."
+  (let ((start (point))
+        (shr-current-font 'default))
+    (shr-tag-pre dom)
+    (put-text-property start (point) 'hoogle-code t)
+    (insert "\n")))
+
+(defun hoogle-buffer--code (dom)
+  "Mark rendering of DOM with pre tag as code."
+  (let ((start (point)))
+    (shr-tag-code dom)
+    (put-text-property start (point) 'hoogle-code t)))
+
+(defun hoogle-buffer--shr-renderers ()
+  "Return the value of `shr-external-rendering-functions' to be used."
+  (let ((renderers shr-external-rendering-functions))
+    (push `(pre . hoogle-buffer--pre) renderers)
+    (push `(code . hoogle-buffer--code) renderers)
+    renderers))
+
 (defun hoogle-buffer--setup-fontification-buffer ()
   "Setup the indirect buffer used for fontification."
   (when (buffer-live-p hoogle-buffer--fontification-buffer)
     (with-current-buffer hoogle-buffer--fontification-buffer
       (setq-local delay-mode-hooks t)
       (haskell-mode)
-      (font-lock-mode -1)
       (setq-local font-lock-dont-widen t
-                  font-lock-support-mode nil)
+                  font-lock-support-mode nil
+                  font-lock-global-modes nil)
       (current-buffer))))
 
 (defun hoogle-buffer--get-fontification-buffer ()
@@ -92,9 +113,11 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
                                       nil t))
     (hoogle-buffer--setup-fontification-buffer)))
 
-(defun hoogle-buffer--fontify (start end)
-  "Fontify current hoogle buffer from START to END."
-  (goto-char start)
+(defun hoogle-buffer--fontify (beg end)
+  "Fontify current hoogle buffer from BEG to END."
+  (goto-char end)
+  (setq end (line-end-position))
+  (goto-char beg)
   (beginning-of-line)
   (while (re-search-forward
           (rx bol (? "§ ") (group (or "Package" "Module")) ": " (group (* nonl)))
@@ -103,52 +126,50 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
                        (if (equal (match-string 1) "Package")
                            'haskell-quasi-quote-face
                          'haskell-keyword-face)))
-  (if (memq (get-text-property start 'face) '(nil 'shr-code))
-      (setq start (previous-single-property-change start 'face nil (point-min))))
-  (when (memq (get-text-property end 'face) '(nil 'shr-code))
-    (setq end (next-single-property-change end 'face nil (point-max))))
+  (when (get-text-property beg 'hoogle-code)
+    (setq beg (previous-single-property-change beg 'hoogle-code nil (point-min))))
+  (when (get-text-property end 'hoogle-code)
+    (setq end (next-single-property-change end 'hoogle-code nil (point-max))))
   (with-current-buffer (hoogle-buffer--get-fontification-buffer)
-    (goto-char start)
-    (let ((start start))
-      (while (< (point) end)
-        (while
-            (and (not (memq (get-text-property (point) 'face) '(nil shr-code)))
-                 (goto-char (next-single-char-property-change (point) 'face))))
-        (setq start (point))
-        (goto-char (next-single-property-change start 'face nil (point-max)))
-        (narrow-to-region start (point))
-        (font-lock-fontify-region start (point))
-        (widen)
-        (unless (eobp) (forward-char)))))
-  `(jit-lock-bounds ,start . ,end))
+    (goto-char beg)
+    (let ((beg beg))
+      (while (setq beg (text-property-not-all (point) end 'hoogle-code nil))
+        (goto-char (or (text-property-any beg end 'hoogle-code nil) end))
+        (narrow-to-region beg (point))
+        (font-lock-fontify-region beg (point))
+        (goto-char (point-max))
+        (widen))))
+  `(jit-lock-bounds ,beg . ,end))
 
 ;;; Process handling
 (defun hoogle-buffer--insert-results (proc)
   "Insert available results from PROC into results buffer."
   (goto-char (point-min))
-  (while (not (eobp))
-    (set-marker (process-mark proc) (min (+ 2 (line-end-position)) (point-max)))
-    (when-let ((result (ignore-errors
-                         (json-parse-string
-                          (delete-and-extract-region
-                           (line-beginning-position) (line-end-position))
-                          :object-type 'alist)))
-               (start (point)))
-      (insert (propertize "§ " 'face 'bold 'line-prefix ""))
-      (consult-hoogle--details result)
-      (goto-char (- (process-mark proc) 2))
-      (end-of-line)
-      (put-text-property start (point) 'hoogle-result result)
-      (insert "\n"))
-    (goto-char (process-mark proc)))
+  (let ((shr-external-rendering-functions (hoogle-buffer--shr-renderers)))
+    (while (not (eobp))
+      (set-marker (process-mark proc)
+                  (min (+ 2 (line-end-position)) (point-max)))
+      (when-let ((result (ignore-errors
+                           (json-parse-string
+                            (delete-and-extract-region
+                             (line-beginning-position) (line-end-position))
+                            :object-type 'alist)))
+                 (start (point)))
+        (insert (propertize "§ " 'face 'bold 'line-prefix ""))
+        (consult-hoogle--details result)
+        (goto-char (- (process-mark proc) 2))
+        (end-of-line)
+        (put-text-property start (point) 'hoogle-result result)
+        (insert "\n"))
+      (goto-char (process-mark proc))))
   (goto-char (point-min))
   (while (re-search-forward (rx "\n" (>= 2 (: (* whitespace) "\n"))) nil t)
     (replace-match "\n\n"))
   (let ((inhibit-read-only t))
-   (with-current-buffer (process-get proc 'results-buffer)
-    (save-excursion
-      (goto-char (point-max))
-      (insert-buffer-substring (process-buffer proc)))))
+    (with-current-buffer (process-get proc 'results-buffer)
+      (save-excursion
+        (goto-char (point-max))
+        (insert-buffer-substring (process-buffer proc)))))
   (delete-region (point-min) (point-max)))
 
 (defun hoogle-buffer--filter (proc string)
@@ -185,7 +206,6 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
           (url-insert buffer)
           (decode-coding-region (point-min) (point-max) 'utf-8)
           (goto-char (point-min))
-          (pop-to-buffer (current-buffer))
           (json-parse-buffer :object-type 'alist :array-type 'list)))
     (kill-buffer buffer)))
 
@@ -196,11 +216,12 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
     (shr-render-region (point-min) (point-max))
     (buffer-substring-no-properties (point-min) (point-max))))
 
-(defun hoogle-buffer--url-callback (status results-buffer time-stamp)
+(defun hoogle-buffer--url-callback (status results-buffer)
   "Callback for `url-queue-retrieve' to insert results into RESULTS-BUFFER.
 See `url-retrieve' for STATUS."
   (let ((url-buffer (current-buffer))
-        (inhibit-read-only t))
+        (inhibit-read-only t)
+        (shr-external-rendering-functions (hoogle-buffer--shr-renderers)))
     (with-current-buffer results-buffer
       (save-excursion
         (goto-char (point-max))
@@ -216,9 +237,7 @@ See `url-retrieve' for STATUS."
         (while (re-search-forward
                 (rx "\n" (>= 2 (: (* whitespace) "\n"))) nil t)
           (replace-match "\n\n")))
-      (pop-to-buffer results-buffer)
-      (message "hoogle took %s milliseconds"
-               (time-convert (time-since time-stamp) 1000)))))
+      (pop-to-buffer results-buffer))))
 
 ;;; Interactive Commands
 ;;;###autoload
@@ -243,7 +262,7 @@ hoogle.haskell.org is used. See `hoogle-buffer-args' for customization."
         (pop-to-buffer results-buffer))
     (url-queue-retrieve (format hoogle-buffer--url-format (url-hexify-string query))
                         #'hoogle-buffer--url-callback
-                        `(,results-buffer ,(current-time)) t)))
+                        `(,results-buffer) t)))
 
 (defun hoogle-buffer-project (query results-buffer)
   "Display search results for QUERY in RESULTS-BUFFER for current project.
