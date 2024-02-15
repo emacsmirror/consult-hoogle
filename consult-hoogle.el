@@ -140,8 +140,10 @@ we use the same buffer throughout."
              (url (if (eq 'item type-url)
                       .url
                     (alist-get 'url (alist-get type-url alist)))))
-        (if (or (eq type 'package)
-                (equal .type "package"))
+        (if (and (or (eq type 'package)
+                     (equal .type "package"))
+                 (url-file-host-is-local-p
+                  (url-host (url-generic-parse-url url))))
             (browse-url (concat url "index.html"))
           (browse-url url))
       (message "No suitable url for current alist."))))
@@ -164,7 +166,7 @@ we use the same buffer throughout."
                           (consult-hoogle--doc-line
                            "Module: " .module.name .item)))
            (item-line (when (equal .type "")
-                        (concat .item "\n"))))
+                        (concat (propertize .item 'hoogle-code t) "\n"))))
       (insert (concat item-line module-line package-line) "\n"))
     (let ((beg (point)))
       (insert .docs)
@@ -218,9 +220,10 @@ we use the same buffer throughout."
 ;;;; Consult integration
 (defun consult-hoogle--candidate ()
   "Get the current candidate."
-  (get-text-property
-   0 'consult--candidate
-   (run-hook-with-args-until-success 'consult--completion-candidate-hook)))
+  (if-let ((candidate (run-hook-with-args-until-success
+                       'consult--completion-candidate-hook)))
+      (get-text-property 0 'consult--candidate candidate)
+    (get-text-property (point) 'hoogle-result)))
 
 (defun consult-hoogle--search (&optional state action)
   "Search the local hoogle database and take ACTION with the selection.
