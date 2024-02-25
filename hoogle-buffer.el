@@ -16,34 +16,8 @@
 ;; Display results of a hoogle search in a buffer.
 
 ;;; Code:
-(require 'consult-hoogle)
+(require 'hoogle-base)
 (require 'url-handlers)
-
-;;; Customization Options
-(defgroup hoogle-buffer nil
-  "Hoogle in an Emacs buffer."
-  :group 'haskell)
-
-(defcustom hoogle-buffer-args
-  (when (executable-find "hoogle")
-    '("hoogle" . ("search" "--jsonl" "-q" "--count=250")))
-  "The hoogle invocation used to get results.
-It is should be a cons (COMMAND . ARGS).  COMMAND should be valid executable.
-It is called arguments ARGS with the search query appended.  It should produce
-search results in JSON lines format."
-  :type '(choice (nil :tag "Use hoogle at hoogle.haskell.org")
-                 (cons (string :tag "Hoogle command")
-                       (repeat :tag "Args for hoogle" string)))
-  :group 'hoogle-buffer)
-
-(defcustom hoogle-buffer-project-args
-  '("cabal-hoogle" . ("run" "--" "search" "--jsonl" "-q" "--count=250"))
-  "The hoogle invocation used to get results for current project.
-It should be cons (COMMAND . ARGS). See `consult-hoogle-args' for details.  By
-default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
-  :type '(cons (string :tag "Project specific hoogle command")
-          (repeat :tag "Args for hoogle" string))
-  :group 'hoogle-buffer)
 
 ;;; Internal variables
 (defconst hoogle-buffer--url-format
@@ -54,7 +28,28 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
   "Indirect buffer used for fontification in a hoogle buffer.")
 (put 'hoogle-buffer--fontification-buffer 'permanent-local t)
 
+(defvar hoogle-buffer--query nil)
+
+(defvar hoogle-buffer-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map (make-composed-keymap
+                            hoogle-base-map special-mode-map))
+    (define-key map "s" #'hoogle-buffer)
+    (define-key map "p" #'hoogle-buffer-project)
+    (define-key map "w" #'hoogle-buffer-web)
+    map))
+
 ;;; Major mode
+(defun hoogle-buffer--candidate ()
+  "Obtain the current hoogle candidate."
+ (get-text-property (point) 'hoogle-result))
+
+(defun hoogle-buffer-modify-query (fun)
+  "Run a search with current query modified by FUN."
+  (let ((hoogle-base-args (car hoogle-buffer--query)))
+    (hoogle-buffer (funcall fun (cdr hoogle-buffer--query))
+                   (current-buffer))))
+
 (define-derived-mode hoogle-buffer-mode special-mode "Hoogle"
   "Major mode for displaying Hoogle search results."
   :syntax-table nil :abbrev-table nil :interactive nil
@@ -63,7 +58,9 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
   (setq-local jit-lock-functions '(hoogle-buffer--fontify)
               outline-regexp (rx "§" (* whitespace))
               outline-minor-mode-cycle t
-              outline-minor-mode-highlight nil)
+              outline-minor-mode-highlight nil
+              hoogle-base-find-candidate #'hoogle-buffer--candidate
+              hoogle-base-modify-query-function #'hoogle-buffer-modify-query)
   (hoogle-buffer--setup-fontification-buffer)
   (jit-lock-mode t)
   (outline-minor-mode)
@@ -156,7 +153,7 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
                             :object-type 'alist)))
                  (start (point)))
         (insert (propertize "§ " 'face 'bold 'line-prefix ""))
-        (consult-hoogle--details result)
+        (hoogle-base--details result)
         (goto-char (- (process-mark proc) 2))
         (end-of-line)
         (put-text-property start (point) 'hoogle-result result)
@@ -229,7 +226,7 @@ See `url-retrieve' for STATUS."
           (cl-callf hoogle-buffer--render-html (alist-get 'item result))
           (insert (propertize "§ " 'face 'bold 'line-prefix ""))
           (let ((start (point)))
-            (consult-hoogle--details result)
+            (hoogle-base--details result)
             (goto-char (point-max))
             (put-text-property (- start 2) (point) 'hoogle-result result))
           (insert "\n\n"))
@@ -250,12 +247,13 @@ hoogle.haskell.org is used. See `hoogle-buffer-args' for customization."
   (let ((inhibit-read-only t))
     (with-current-buffer results-buffer
       (erase-buffer)
-      (hoogle-buffer-mode)))
-  (if hoogle-buffer-args
+      (hoogle-buffer-mode)
+      (setq-local hoogle-buffer--query (cons hoogle-base-args query))))
+  (if hoogle-base-args
       (let* ((proc-buffer (get-buffer-create "*hoogle-process*"))
              (proc (make-process :name "*hoogle-process*" :buffer proc-buffer
                                  :noquery t :connection-type 'pipe
-                                 :command `(,@hoogle-buffer-args ,query)
+                                 :command `(,@hoogle-base-args ,query)
                                  :filter #'hoogle-buffer--filter
                                  :sentinel #'hoogle-buffer--sentinel)))
         (process-put proc 'results-buffer results-buffer)
@@ -271,7 +269,7 @@ by running `cabal-hoogle generate'.  `hoogle-buffer-project-args' can be
 customized to configure an alternate command."
   (interactive (list (read-string "Hoogle: ")
                      (get-buffer-create "*hoogle-search*")))
-  (let ((hoogle-buffer-args hoogle-buffer-project-args))
+  (let ((hoogle-base-args hoogle-base-project-args))
     (hoogle-buffer query results-buffer)))
 
 (defun hoogle-buffer-web (query results-buffer)
@@ -279,7 +277,7 @@ customized to configure an alternate command."
 Results are obtained by querying hoogle.haskell.org ."
   (interactive (list (read-string "Hoogle: ")
                      (get-buffer-create "*hoogle-search*")))
-  (let (hoogle-buffer-args)
+  (let (hoogle-base-args)
     (hoogle-buffer query results-buffer)))
 
 (provide 'hoogle-buffer)

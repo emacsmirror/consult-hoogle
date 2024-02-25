@@ -22,33 +22,16 @@
 
 ;;;; Packages
 (require 'consult)
-(require 'subr-x)
+(require 'hoogle-base)
 (require 'haskell-mode)
-(require 'shr)
 
 ;;;; Variables
 (defgroup consult-hoogle nil
   "A frontend for hoogle."
   :group 'consult)
 
-(defcustom consult-hoogle-args
-  '("hoogle" . ("search" "--jsonl" "-q" "--count=250"))
-  "The hoogle invocation used to get results.
-It is should be a cons (COMMAND . ARGS).  COMMAND should be valid executable.
-It is called arguments ARGS with the search query appended.  It should produce
-search results in JSON lines format."
-  :type '(cons (string :tag "Hoogle command")
-               (repeat :tag "Args for hoogle" string))
-  :group 'consult-hoogle)
-
-(defcustom consult-hoogle-project-args
-  '("cabal-hoogle" . ("run" "--" "search" "--jsonl" "-q" "--count=250"))
-  "The cabal-hoogle invocation used to get results for current project.
-It should be cons (COMMAND . ARGS). See `consult-hoogle-args' for details.  By
-default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
-  :type '(cons (string :tag "Project specific hoogle command")
-               (repeat :tag "Args for hoogle" string))
-  :group 'consult-hoogle)
+(define-obsolete-variable-alias 'consult-hoogle-args 'hoogle-base-args "0.2.0")
+(define-obsolete-variable-alias 'consult-hoogle-project-args 'hoogle-base-project-args "0.2.0")
 
 (defcustom consult-hoogle-show-module-and-package t
   "Whether to show the package and module in the candidate line."
@@ -60,16 +43,9 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
 
 (defvar consult-hoogle-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "M-i") #'consult-hoogle-browse-item)
-    (define-key map (kbd "M-j") #'consult-hoogle-browse-package)
-    (define-key map (kbd "M-m") #'consult-hoogle-browse-module)
+    (set-keymap-parent map hoogle-base-map)
     (define-key map (kbd "M-<up>") #'consult-hoogle-scroll-docs-down)
     (define-key map (kbd "M-<down>") #'consult-hoogle-scroll-docs-up)
-    (define-key map (kbd "TAB p") #'consult-hoogle-restrict-to-package)
-    (define-key map (kbd "TAB m") #'consult-hoogle-restrict-to-module)
-    (define-key map (kbd "TAB b") #'consult-hoogle-restrict-to-module-level-beg)
-    (define-key map (kbd "TAB e") #'consult-hoogle-restrict-to-module-level-end)
-    (define-key map (kbd "TAB c") #'consult-hoogle-clear-restrictions)
     map))
 
 ;;;; Constructing the string to display
@@ -77,7 +53,7 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
   "Build command line given INPUT."
   (pcase-let ((`(,arg . ,opts) (consult--command-split input)))
     (unless (string-blank-p arg)
-      (cons (append consult-hoogle-args (list arg) opts)
+      (cons (append hoogle-base-args (list arg) opts)
             (cdr (consult--default-regexp-compiler input 'basic t))))))
 
 (defun consult-hoogle--format (lines)
@@ -100,10 +76,6 @@ we use the same buffer throughout."
       item
     (concat item from module in package)))
 
-(defun consult-hoogle--name (item &optional face)
-  "Return name of ITEM with FACE."
-  (propertize (cadr (split-string item nil t " +")) 'face face))
-
 (defun consult-hoogle--format-result (json)
   "Parse the JSON resturned by hoogle to construct a result."
   (when-let ((parsed (ignore-errors (json-parse-string json :object-type 'alist))))
@@ -121,57 +93,15 @@ we use the same buffer throughout."
                (cl-callf consult-hoogle--fontify (alist-get 'item parsed))
                from module in package))
          ("module" (concat "Module "
-                           (cl-callf consult-hoogle--name (alist-get 'item parsed)
+                           (cl-callf hoogle-base--name (alist-get 'item parsed)
                              'haskell-keyword-face)
                            in package))
          ("package" (concat "Package "
-                            (cl-callf consult-hoogle--name (alist-get 'item parsed)
+                            (cl-callf hoogle-base--name (alist-get 'item parsed)
                               'haskell-quasi-quote-face))))
        'consult--candidate parsed))))
 
-;;;; Following the urls from hoogle results.
-(defun consult-hoogle--browse-url (type &optional alist)
-  "Open the url of TYPE from ALIST."
-  (let-alist alist
-    (if-let ((type-url (pcase .type
-                         ("" type)
-                         ("module" (if (eq type 'module) 'item type))
-                         ("package" (if (eq type 'package) 'item type))))
-             (url (if (eq 'item type-url)
-                      .url
-                    (alist-get 'url (alist-get type-url alist)))))
-        (if (and (or (eq type 'package)
-                     (equal .type "package"))
-                 (url-file-host-is-local-p
-                  (url-host (url-generic-parse-url url))))
-            (browse-url (concat url "index.html"))
-          (browse-url url))
-      (message "No suitable url for current alist."))))
-
 ;;;; Constructing the details buffer for the selected result
-(defun consult-hoogle--doc-line (label elem item)
-  "Construct a line for doc buffer from LABEL ELEM and ITEM."
-  (concat (propertize label 'face 'bold)
-          (if (and elem (not (equal elem "")))
-              elem
-            (consult-hoogle--name item))
-          "\n"))
-
-(defun consult-hoogle--details (alist)
-  "Construct the details from ALIST."
-  (let-alist alist
-    (let* ((package-line (consult-hoogle--doc-line
-                          "Package: " .package.name .item))
-           (module-line (unless (equal "package" .type)
-                          (consult-hoogle--doc-line
-                           "Module: " .module.name .item)))
-           (item-line (when (equal .type "")
-                        (concat (propertize .item 'hoogle-code t) "\n"))))
-      (insert (concat item-line module-line package-line) "\n"))
-    (let ((beg (point)))
-      (insert .docs)
-      (shr-render-region beg (point)))))
-
 (defun consult-hoogle--show-details (action cand)
   "Show the details for the current CAND and handle ACTION."
   (when-let (((equal (buffer-name) " *Hoogle Documentation*"))
@@ -179,7 +109,7 @@ we use the same buffer throughout."
     (erase-buffer)
     (pcase action
       ('preview (when cand
-                  (consult-hoogle--details cand)
+                  (hoogle-base--details cand)
                   (goto-char (point-min))))
       ('return (kill-buffer-and-window)))))
 
@@ -196,40 +126,26 @@ we use the same buffer throughout."
          (separator (if separator separator initial))
          (async-rx (rx-to-string `(: bos ,(or initial "") (0+ (not ,separator))))))
     (delete-minibuffer-contents)
-    (insert (string-trim (replace-regexp-in-string
-                          async-rx
-                          (lambda (match) (funcall fun match))
-                          input)))))
-
-(defun consult-hoogle--add-to-input (&rest addition)
-  "Add ADDITION to the async part of the input."
-  (let ((pos (point)))
-    (consult-hoogle--modify-async-input
-     (lambda (match) (apply #'concat match " " addition)))
-    (goto-char pos)))
-
-(defun consult-hoogle--get (key &optional alist)
-  "Return the value for KEY from the ALIST."
-  (let ((alist (or alist (consult-hoogle--candidate))))
-    (let-alist alist
-      (pcase .type
-        ("" (alist-get 'name (alist-get key alist)))
-        ("module" (if (eq key 'module) .item .package.name))
-        ("package" .item)))))
+    (save-excursion
+      (insert (string-trim (replace-regexp-in-string
+                            async-rx
+                            (lambda (match) (funcall fun match))
+                            input))))))
 
 ;;;; Consult integration
 (defun consult-hoogle--candidate ()
   "Get the current candidate."
-  (if-let ((candidate (run-hook-with-args-until-success
-                       'consult--completion-candidate-hook)))
-      (get-text-property 0 'consult--candidate candidate)
-    (get-text-property (point) 'hoogle-result)))
+  (when-let ((candidate (run-hook-with-args-until-success
+                         'consult--completion-candidate-hook)))
+    (get-text-property 0 'consult--candidate candidate)))
 
 (defun consult-hoogle--search (&optional state action)
   "Search the local hoogle database and take ACTION with the selection.
 STATE is the optional state function passed to the `consult--read'."
   (let ((consult-async-min-input 0)
-        (fun (or action (lambda (alist) (consult-hoogle--browse-url 'item alist)))))
+        (hoogle-base-find-candidate #'consult-hoogle--candidate)
+        (hoogle-base-modify-query-function #'consult-hoogle--modify-async-input)
+        (fun (or action (lambda (alist) (hoogle-base--browse-url 'item alist)))))
     (with-current-buffer (get-buffer-create " *Hoogle Fontification*" t)
       (setq-local delay-mode-hooks t)
       (haskell-mode))
@@ -280,27 +196,13 @@ customized to configure an alternate command.
 By default this shows the documentation for the current candidate in a side
 window.  This can be disabled by a prefix ARG."
   (interactive (list current-prefix-arg))
-  (let ((consult-hoogle-args consult-hoogle-project-args)
+  (let ((hoogle-base-args hoogle-base-project-args)
         (default-directory (haskell-cabal-find-dir)))
     (consult-hoogle arg)))
 
-(defun consult-hoogle-browse-item ()
-  "Browse the url for current item."
-  (interactive)
-  (consult-hoogle--browse-url 'item (consult-hoogle--candidate)))
-
-(defun consult-hoogle-browse-module ()
-  "Browse the url for the module the current item belongs to."
-  (interactive)
-  (consult-hoogle--browse-url 'module (consult-hoogle--candidate)))
-
-(defun consult-hoogle-browse-package ()
-  "Browse the url for the package the current item belongs to."
-  (interactive)
-  (consult-hoogle--browse-url 'package (consult-hoogle--candidate)))
-
 (defun consult-hoogle-scroll-docs-down (&optional arg)
-  "Scroll the window with documentation ARG lines down." (interactive)
+  "Scroll the window with documentation ARG lines down."
+  (interactive)
   (with-selected-window (get-buffer-window " *Hoogle Documentation*")
     (scroll-down arg)))
 
@@ -310,60 +212,5 @@ window.  This can be disabled by a prefix ARG."
   (with-selected-window (get-buffer-window " *Hoogle Documentation*")
     (scroll-up arg)))
 
-(defun consult-hoogle-restrict-to-package (package &optional arg)
-  "Restrict the search to PACKAGE.
-With prefix ARG exluce package from search."
-  (interactive (list (consult-hoogle--get 'package) current-prefix-arg))
-  (when package
-    (consult-hoogle--add-to-input (if arg "-" "+") (downcase package))))
-
-(defun consult-hoogle-restrict-to-module (module &optional arg)
-  "Restrict the search to MODULE.
-With prefix ARG exluce module from search."
-  (interactive (list (consult-hoogle--get 'module) current-prefix-arg))
-  (when module (consult-hoogle--add-to-input (if arg "-" "+") module)))
-
-(defun consult-hoogle-restrict-to-module-level-beg (module level)
-  "Restrict to a part of MODULE heirarchy.
-If called with numeric prefix LEVEL only use first ARG levels of module."
-  (interactive (list (consult-hoogle--get 'module)
-                     (prefix-numeric-value current-prefix-arg)))
-  (when module
-    (consult-hoogle--add-to-input
-     (if (> level 0) "+" "-")
-     (progn
-       (string-match (rx-to-string
-                      `(: bos (= ,(abs level) (: (1+ (not ".")) (?? ".")))))
-                     module)
-       (match-string 0 module)))))
-
-(defun consult-hoogle-restrict-to-module-level-end (module level)
-  "Restrict to a part of MODULE heirarchy.
-If called with numeric prefix LEVEL only use last ARG levels of module."
-  (interactive (list (consult-hoogle--get 'module)
-                     (prefix-numeric-value current-prefix-arg)))
-  (when module
-    (consult-hoogle--add-to-input
-     (if (> level 0) "+" "-")
-     (progn
-       (string-match (rx-to-string
-                      `(: (= ,(abs level) (: (1+ (not ".")) (?? "."))) eos))
-                     module)
-       (match-string 0 module)))))
-
-(defun consult-hoogle-clear-restrictions (arg)
-  "Clear all restrictions and exclusions on the search.
-With positive prefix ARG only clear restrictions. With negative prefix
-only clear exclusions."
-  (interactive (list (when current-prefix-arg
-                       (prefix-numeric-value current-prefix-arg))))
-  (let ((restriction-rx (rx-to-string `(: ,(if (not arg)
-                                               '(or "+" "-")
-                                             (if (> arg 0) "+" "-"))
-                                        (0+ (not space))))))
-    (consult-hoogle--modify-async-input
-     (lambda (match) (replace-regexp-in-string restriction-rx "" match)))))
-
 (provide 'consult-hoogle)
-
 ;;; consult-hoogle.el ends here
