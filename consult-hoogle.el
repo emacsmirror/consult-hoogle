@@ -9,7 +9,7 @@
 ;; Version: 0.1.1
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
-;; Package-Requires: ((emacs "27.1") (consult "0.18") (haskell-mode "16.1"))
+;; Package-Requires: ((emacs "27.1") (haskell-mode "16.1"))
 
 ;; This file is part of GNU Emacs.
 
@@ -24,6 +24,8 @@
 (require 'consult)
 (require 'hoogle-base)
 (require 'haskell-mode)
+
+(declare-function hoogle-buffer "hoogle-buffer")
 
 ;;;; Variables
 (defgroup consult-hoogle nil
@@ -46,6 +48,7 @@
     (set-keymap-parent map hoogle-base-map)
     (define-key map (kbd "M-<up>") #'consult-hoogle-scroll-docs-down)
     (define-key map (kbd "M-<down>") #'consult-hoogle-scroll-docs-up)
+    (define-key map (kbd "C-e") #'consult-hoogle-export-to-buffer)
     map))
 
 ;;;; Constructing the string to display
@@ -55,10 +58,6 @@
     (unless (string-blank-p arg)
       (cons (append hoogle-base-args (list arg) opts)
             (cdr (consult--default-regexp-compiler input 'basic t))))))
-
-(defun consult-hoogle--format (lines)
-  "Format the LINES from hoogle result."
-  (mapcar #'consult-hoogle--format-result lines))
 
 (defun consult-hoogle--fontify (text)
   "Fontify TEXT, returning the fontified text.
@@ -114,23 +113,24 @@ we use the same buffer throughout."
       ('return (kill-buffer-and-window)))))
 
 ;;;; Refining searches
-(defun consult-hoogle--modify-async-input (fun)
-  "Change async part of input to (funcall FUN async-input)."
+(defun consult-hoogle--async-input ()
+  "Return the async part of the input."
   (let* ((style (alist-get consult-async-split-style consult-async-split-styles-alist))
-         (initial (plist-get style :initial))
-         (separator (plist-get style :separator))
-         (input (minibuffer-contents))
-         (initial (when initial
+         (input (substring-no-properties (minibuffer-contents)))
+         (initial (when (plist-get style :initial)
                     (string-match (rx bos (group (opt punct))) input)
                     (match-string 1 input)))
-         (separator (if separator separator initial))
-         (async-rx (rx-to-string `(: bos ,(or initial "") (0+ (not ,separator))))))
-    (delete-minibuffer-contents)
-    (save-excursion
-      (insert (string-trim (replace-regexp-in-string
-                            async-rx
-                            (lambda (match) (funcall fun match))
-                            input))))))
+         (separator (or (plist-get style :separator) initial))
+         (async-rx (rx-to-string `(: ,(or initial "") (group (0+ (not ,separator)))))))
+    (goto-char (minibuffer-prompt-end))
+    (when (looking-at async-rx)
+      (substring-no-properties (match-string 1)))))
+
+(defun consult-hoogle--modify-async-input (fun)
+  "Change async part of input to (funcall FUN async-input)."
+  (save-excursion
+    (when-let ((input (consult-hoogle--async-input)))
+      (replace-match (string-trim (funcall fun input)) nil t nil 1))))
 
 ;;;; Consult integration
 (defun consult-hoogle--candidate ()
@@ -211,6 +211,13 @@ window.  This can be disabled by a prefix ARG."
   (interactive)
   (with-selected-window (get-buffer-window " *Hoogle Documentation*")
     (scroll-up arg)))
+
+(defun consult-hoogle-export-to-buffer ()
+  "Open a buffer containing results for the async part of current search."
+  (interactive)
+  (let ((input (consult-hoogle--async-input)))
+    (hoogle-buffer input (get-buffer-create "*hoogle-search*"))
+    (abort-recursive-edit)))
 
 (provide 'consult-hoogle)
 ;;; consult-hoogle.el ends here
