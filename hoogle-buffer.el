@@ -30,6 +30,7 @@
 
 (defvar hoogle-buffer--query nil)
 
+;;; Keymap
 (defvar hoogle-buffer-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map (make-composed-keymap

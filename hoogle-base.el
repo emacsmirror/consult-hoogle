@@ -75,7 +75,7 @@ It should run the search with the new query.")
 
 (defun hoogle-base--name (item &optional face)
   "Return name of ITEM with FACE."
-  (propertize (cadr (split-string item nil t " +")) 'face face))
+  (propertize (or (cadr (split-string item nil t " +")) item) 'face face))
 
 (defun hoogle-base--doc-line (label elem item)
   "Construct a line for doc buffer from LABEL ELEM and ITEM."
@@ -111,13 +111,15 @@ It should run the search with the new query.")
              (url (if (eq 'item type-url)
                       .url
                     (alist-get 'url (alist-get type-url alist)))))
-        (if (and (or (eq type 'package)
-                     (equal .type "package"))
-                 (url-file-host-is-local-p
-                  (url-host (url-generic-parse-url url))))
-            (browse-url (concat url "index.html"))
-          (browse-url url))
-      (message "No suitable url for current alist."))))
+        (progn (if (and (or (eq type 'package)
+                            (equal .type "package"))
+                        (url-file-host-is-local-p
+                         (url-host (url-generic-parse-url url))))
+                   (browse-url (concat url "index.html"))
+                 (browse-url url))
+               (when (minibufferp nil t)
+                (abort-recursive-edit)))
+      (message "No suitable url for current candidate."))))
 
 ;;;; Refining Searches
 (defun hoogle-base--add-to-input (&rest addition)
