@@ -133,8 +133,8 @@ It should run the search with the new query.")
     (let-alist alist
       (pcase .type
         ("" (alist-get 'name (alist-get key alist)))
-        ("module" (if (eq key 'module) .item .package.name))
-        ("package" .item)))))
+        ("module" (hoogle-base--name (if (eq key 'module) .item .package.name)))
+        ("package" (hoogle-base--name .item))))))
 
 
 ;;;; Interactive Commands
