@@ -103,14 +103,24 @@ we use the same buffer throughout."
 ;;;; Constructing the details buffer for the selected result
 (defun consult-hoogle--show-details (action cand)
   "Show the details for the current CAND and handle ACTION."
-  (when-let (((equal (buffer-name) " *Hoogle Documentation*"))
-             (inhibit-read-only t))
-    (erase-buffer)
-    (pcase action
-      ('preview (when cand
-                  (hoogle-base--details cand)
-                  (goto-char (point-min))))
-      ('return (kill-buffer-and-window)))))
+  (let ((buf (get-buffer-create " *Hoogle Documentation*" t))
+        (inhibit-read-only t)
+        (inhibit-message t))
+    (with-current-buffer buf
+      (erase-buffer)
+      (pcase action
+        ('preview (when cand
+                    (hoogle-base--details cand)
+                    (goto-char (point-min))))
+        ('setup (visual-line-mode)
+                (read-only-mode)
+                (display-buffer buf `( display-buffer-in-side-window
+                                       (window-height . 16)
+                                       (side . bottom)
+                                       (slot . -1))))
+        ('return (when-let ((win (get-buffer-window buf)))
+                   (delete-window win))
+                 (kill-buffer buf))))))
 
 ;;;; Refining searches
 (defun consult-hoogle--async-input ()
@@ -175,17 +185,7 @@ By default this shows the documentation for the current candidate in a side
 window.  This can be disabled by a prefix ARG."
   (interactive (list current-prefix-arg))
   (if arg (consult-hoogle--search)
-    (let* ((buf (get-buffer-create " *Hoogle Documentation*" t))
-           (window (display-buffer buf
-                                   `(display-buffer-in-side-window
-                                     (window-height . 16)
-                                     (side . bottom)
-                                     (slot . -1)))))
-      (with-current-buffer buf
-        (visual-line-mode)
-        (read-only-mode))
-      (with-selected-window window
-        (consult-hoogle--search #'consult-hoogle--show-details)))))
+    (consult-hoogle--search #'consult-hoogle--show-details)))
 
 ;;;###autoload
 (defun consult-hoogle-project (arg)
