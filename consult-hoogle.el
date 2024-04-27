@@ -6,7 +6,7 @@
 ;; Maintainer: rahguzar <rahguzar@zohomail.eu>
 ;; Created: April 10, 2022
 ;; License: GPL-3.0-or-later
-;; Version: 0.2.0
+;; Version: 0.2.1
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
 ;; Package-Requires: ((emacs "27.1") (haskell-mode "16.1"))
@@ -171,7 +171,10 @@ STATE is the optional state function passed to the `consult--read'."
                       :state state
                       :sort nil
                       :keymap consult-hoogle-map
-                      :add-history (consult--async-split-thingatpt 'symbol)
+                      :add-history (or (and (fboundp #'haskell-ident-at-point)
+                                            (consult--async-split-initial
+                                             (haskell-ident-at-point)))
+                                     (consult--async-split-thingatpt 'symbol))
                       :category 'consult-hoogle
                       :history '(:input consult-hoogle--history)))
       (when-let ((buf (get-buffer " *Hoogle Fontification*")))
