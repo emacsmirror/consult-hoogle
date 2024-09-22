@@ -9,7 +9,7 @@
 ;; Version: 0.2.1
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
-;; Package-Requires: ((emacs "27.1") (haskell-mode "16.1"))
+;; Package-Requires: ((emacs "27.1") (consult "0.18") (haskell-mode "16.1"))
 
 ;; This file is part of GNU Emacs.
 
