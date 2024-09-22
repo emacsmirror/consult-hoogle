@@ -6,7 +6,7 @@
 ;; Maintainer: rahguzar <rahguzar@zohomail.eu>
 ;; Created: April 10, 2022
 ;; License: GPL-3.0-or-later
-;; Version: 0.2.1
+;; Version: 0.2.2
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
 ;; Package-Requires: ((emacs "27.1") (consult "0.18") (haskell-mode "16.1"))
