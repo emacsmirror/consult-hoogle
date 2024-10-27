@@ -94,7 +94,7 @@
   (when (buffer-live-p hoogle-buffer--fontification-buffer)
     (with-current-buffer hoogle-buffer--fontification-buffer
       (setq-local delay-mode-hooks t)
-      (haskell-mode)
+      (hoogle-base--haskell-mode)
       (setq-local font-lock-dont-widen t
                   font-lock-support-mode nil
                   font-lock-global-modes nil)

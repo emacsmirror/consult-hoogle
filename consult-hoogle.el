@@ -9,7 +9,7 @@
 ;; Version: 0.2.2
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
-;; Package-Requires: ((emacs "27.1") (consult "0.18") (haskell-mode "16.1"))
+;; Package-Requires: ((emacs "28.1") (consult "0.18"))
 
 ;; This file is part of GNU Emacs.
 
@@ -23,9 +23,9 @@
 ;;;; Packages
 (require 'consult)
 (require 'hoogle-base)
-(require 'haskell-mode)
 
 (declare-function hoogle-buffer "hoogle-buffer")
+(declare-function project-root "project")
 
 ;;;; Variables
 (defgroup consult-hoogle nil
@@ -158,7 +158,7 @@ STATE is the optional state function passed to the `consult--read'."
         (fun (or action (lambda (alist) (hoogle-base--browse-url 'item alist)))))
     (with-current-buffer (get-buffer-create " *Hoogle Fontification*" t)
       (setq-local delay-mode-hooks t)
-      (haskell-mode))
+      (hoogle-base--haskell-mode))
     (unwind-protect
         (funcall fun (consult--read
                       (consult--async-command #'consult-hoogle--builder
@@ -171,7 +171,7 @@ STATE is the optional state function passed to the `consult--read'."
                       :state state
                       :sort nil
                       :keymap consult-hoogle-map
-                      :add-history (or (and (fboundp #'haskell-ident-at-point)
+                      :add-history (or (and (fboundp 'haskell-ident-at-point)
                                             (consult--async-split-initial
                                              (haskell-ident-at-point)))
                                      (consult--async-split-thingatpt 'symbol))
@@ -200,7 +200,9 @@ By default this shows the documentation for the current candidate in a side
 window.  This can be disabled by a prefix ARG."
   (interactive (list current-prefix-arg))
   (let ((hoogle-base-args hoogle-base-project-args)
-        (default-directory (haskell-cabal-find-dir)))
+        (default-directory (if-let ((proj (project-current)))
+                               (project-root proj)
+                             default-directory)))
     (consult-hoogle arg)))
 
 (defun consult-hoogle-scroll-docs-down (&optional arg)

@@ -9,7 +9,7 @@
 ;; Version: 0.2.1
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
-;; Package-Requires: ((emacs "27.1") (haskell-mode "16.1"))
+;; Package-Requires: ((emacs "28.1"))
 
 ;; This file is part of GNU Emacs.
 
@@ -66,6 +66,15 @@ It should run the search with the new query.")
     map))
 
 ;;;; Utility Functions
+(defun hoogle-base--haskell-mode ()
+  "Run the major-mode suitable for haskell."
+  (if-let ((mode (assoc-default ".hs" auto-mode-alist #'string-match-p)))
+      (funcall mode)
+    (display-warning
+     'hoogle-base
+     "No major-mode for haskell is configured. There will be no syntax hightlighting."
+     :warning)))
+
 (defun hoogle-base--candidate ()
   "Get the current candidate."
   (if (functionp hoogle-base-find-candidate)
