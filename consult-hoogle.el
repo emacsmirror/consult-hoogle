@@ -1,6 +1,6 @@
 ;;; consult-hoogle.el --- Hoogle frontend using consult -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2024 Free Software Foundation, Inc.
+;; Copyright (C) 2024-2025 Free Software Foundation, Inc.
 
 ;; Author: rahguzar <rahguzar@zohomail.eu>
 ;; Maintainer: rahguzar <rahguzar@zohomail.eu>
@@ -82,10 +82,10 @@ we use the same buffer throughout."
            (from (propertize " from " 'face 'font-lock-comment-face))
            (module (cl-callf propertize
                        (alist-get 'name (alist-get 'module parsed) "")
-                     'face 'haskell-keyword-face))
+                     'face 'font-lock-keyword-face))
            (package (cl-callf propertize
                         (alist-get 'name (alist-get 'package parsed) "")
-                      'face 'haskell-quasi-quote-face)))
+                      'face 'font-lock-preprocessor-face)))
       (propertize
        (pcase (alist-get 'type parsed)
          (""  (consult-hoogle--format-value
@@ -93,11 +93,11 @@ we use the same buffer throughout."
                from module in package))
          ("module" (concat "Module "
                            (cl-callf hoogle-base--name (alist-get 'item parsed)
-                             'haskell-keyword-face)
+                             'font-lock-keyword-face)
                            in package))
          ("package" (concat "Package "
                             (cl-callf hoogle-base--name (alist-get 'item parsed)
-                              'haskell-quasi-quote-face))))
+                              'font-lock-preprocessor-face))))
        'consult--candidate parsed))))
 
 ;;;; Constructing the details buffer for the selected result
