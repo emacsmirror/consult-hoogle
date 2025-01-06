@@ -56,7 +56,7 @@
   "Build command line given INPUT."
   (pcase-let ((`(,arg . ,opts) (consult--command-split input)))
     (unless (string-blank-p arg)
-      (cons (append hoogle-base-args (list arg) opts)
+      (cons (append hoogle-base-args opts (list arg))
             (cdr (consult--default-regexp-compiler input 'basic t))))))
 
 (defun consult-hoogle--fontify (text)
@@ -161,20 +161,19 @@ STATE is the optional state function passed to the `consult--read'."
       (hoogle-base--haskell-mode))
     (unwind-protect
         (funcall fun (consult--read
-                      (consult--async-command #'consult-hoogle--builder
-                        (consult--async-map #'consult-hoogle--format-result)
-                        (consult--async-highlight #'consult-hoogle--builder))
+                      (consult--async-pipeline
+                       (consult--async-process #'consult-hoogle--builder)
+                       (consult--async-map #'consult-hoogle--format-result)
+                       (consult--async-highlight #'consult-hoogle--builder))
                       :prompt "Hoogle: "
                       :require-match t
-                      :initial (consult--async-split-initial "")
                       :lookup #'consult--lookup-candidate
                       :state state
                       :sort nil
                       :keymap consult-hoogle-map
                       :add-history (or (and (fboundp 'haskell-ident-at-point)
-                                            (consult--async-split-initial
-                                             (haskell-ident-at-point)))
-                                     (consult--async-split-thingatpt 'symbol))
+                                            (haskell-ident-at-point))
+                                       (thing-at-point 'symbol))
                       :category 'consult-hoogle
                       :history '(:input consult-hoogle--history)))
       (when-let ((buf (get-buffer " *Hoogle Fontification*")))
