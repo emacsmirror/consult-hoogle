@@ -149,6 +149,13 @@ we use the same buffer throughout."
                          'consult--completion-candidate-hook)))
     (get-text-property 0 'consult--candidate candidate)))
 
+(defalias 'consult-hoogle--source
+  (consult--async-pipeline
+   (consult--async-process #'consult-hoogle--builder)
+   (consult--async-map #'consult-hoogle--format-result)
+   (consult--async-highlight #'consult-hoogle--builder))
+  "Async consult source to obtain search results from hoogle.")
+
 (defun consult-hoogle--search (&optional state action)
   "Search the local hoogle database and take ACTION with the selection.
 STATE is the optional state function passed to the `consult--read'."
@@ -161,10 +168,7 @@ STATE is the optional state function passed to the `consult--read'."
       (hoogle-base--haskell-mode))
     (unwind-protect
         (funcall fun (consult--read
-                      (consult--async-pipeline
-                       (consult--async-process #'consult-hoogle--builder)
-                       (consult--async-map #'consult-hoogle--format-result)
-                       (consult--async-highlight #'consult-hoogle--builder))
+                      #'consult-hoogle--source
                       :prompt "Hoogle: "
                       :require-match t
                       :lookup #'consult--lookup-candidate
