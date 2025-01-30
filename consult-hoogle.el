@@ -2,14 +2,14 @@
 
 ;; Copyright (C) 2024-2025 Free Software Foundation, Inc.
 
-;; Author: rahguzar <rahguzar@zohomail.eu>
-;; Maintainer: rahguzar <rahguzar@zohomail.eu>
+;; Author: rahguzar <rahguzar@mailbox.org>
+;; Maintainer: rahguzar <rahguzar@mailbox.org>
 ;; Created: April 10, 2022
 ;; License: GPL-3.0-or-later
-;; Version: 0.3.0
+;; Version: 0.4.0
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
-;; Package-Requires: ((emacs "28.1") (consult "0.18"))
+;; Package-Requires: ((emacs "28.1") (consult "2.0"))
 
 ;; This file is part of GNU Emacs.
 
