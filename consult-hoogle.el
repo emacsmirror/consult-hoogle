@@ -100,6 +100,13 @@ we use the same buffer throughout."
                               'font-lock-preprocessor-face))))
        'consult--candidate parsed))))
 
+(defun consult-hoogle--format (lines)
+  "Format candidates using LINES."
+  (let (candidates)
+    (dolist (line lines)
+      (push (consult-hoogle--format-result line) candidates))
+    (delq nil candidates)))
+
 ;;;; Constructing the details buffer for the selected result
 (defun consult-hoogle--show-details (action cand)
   "Show the details for the current CAND and handle ACTION."
@@ -150,10 +157,9 @@ we use the same buffer throughout."
     (get-text-property 0 'consult--candidate candidate)))
 
 (defalias 'consult-hoogle--source
-  (consult--async-pipeline
-   (consult--async-process #'consult-hoogle--builder)
-   (consult--async-map #'consult-hoogle--format-result)
-   (consult--async-highlight #'consult-hoogle--builder))
+  (consult--process-collection #'consult-hoogle--builder
+    :transform (consult--async-transform #'consult-hoogle--format)
+    :highlight t)
   "Async consult source to obtain search results from hoogle.")
 
 (defun consult-hoogle--search (&optional state action)
