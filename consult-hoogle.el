@@ -6,7 +6,7 @@
 ;; Maintainer: rahguzar <rahguzar@mailbox.org>
 ;; Created: April 10, 2022
 ;; License: GPL-3.0-or-later
-;; Version: 0.4.0
+;; Version: 0.4.1
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
 ;; Package-Requires: ((emacs "28.1") (consult "2.0"))
@@ -105,7 +105,7 @@ we use the same buffer throughout."
   (let (candidates)
     (dolist (line lines)
       (push (consult-hoogle--format-result line) candidates))
-    (delq nil candidates)))
+    (nreverse (delq nil candidates))))
 
 ;;;; Constructing the details buffer for the selected result
 (defun consult-hoogle--show-details (action cand)
