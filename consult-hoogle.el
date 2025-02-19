@@ -9,7 +9,7 @@
 ;; Version: 0.4.1
 ;; Keywords: docs languages
 ;; Homepage: https://codeberg.org/rahguzar/consult-hoogle
-;; Package-Requires: ((emacs "28.1") (consult "2.0"))
+;; Package-Requires: ((emacs "27.1") (consult "2.0"))
 
 ;; This file is part of GNU Emacs.
 
@@ -25,7 +25,6 @@
 (require 'hoogle-base)
 
 (declare-function hoogle-buffer "hoogle-buffer")
-(declare-function project-root "project")
 
 ;;;; Variables
 (defgroup consult-hoogle nil
@@ -209,9 +208,7 @@ By default this shows the documentation for the current candidate in a side
 window.  This can be disabled by a prefix ARG."
   (interactive (list current-prefix-arg))
   (let ((hoogle-base-args hoogle-base-project-args)
-        (default-directory (if-let ((proj (project-current)))
-                               (project-root proj)
-                             default-directory)))
+        (default-directory (funcall hoogle-base-project-root-function)))
     (consult-hoogle arg)))
 
 (defun consult-hoogle-scroll-docs-down (&optional arg)

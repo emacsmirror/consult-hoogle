@@ -44,6 +44,14 @@ default it uses `cabal-hoogle' https://github.com/kokobd/cabal-hoogle ."
   :type '(cons (string :tag "Project specific hoogle command")
                (repeat :tag "Args for hoogle" string)))
 
+(defcustom hoogle-base-project-root-function #'hoogle-base-locate-cabal-file
+  "Function to find the `default-directory' for project specific searches.
+It is called without any arguments by `consult-hoogle-project' and
+`hoogle-buffer-project'."
+  :type '(choice (const :tag "Directory with cabal file"
+                        hoogle-base-locate-cabal-file)
+                 (other :tag "Other function" function)))
+
 ;;;; Variables
 (defvar hoogle-base-find-candidate nil
   "Function of no arguments to find current candidate.")
@@ -108,6 +116,14 @@ It should run the search with the new query.")
     (let ((beg (point)))
       (insert .docs)
       (shr-render-region beg (point)))))
+
+(defun hoogle-base-locate-cabal-file ()
+  "Return the parent directory of `default-directory' containing a cabal file."
+  (if-let* ((dir (locate-dominating-file
+                  default-directory
+                  (lambda (dir) (directory-files dir nil (rx ".cabal" eos))))))
+      dir
+    (user-error "Cabal file not found in any parent of %s" default-directory)))
 
 ;;;; Following the urls from hoogle results.
 (defun hoogle-base--browse-url (type &optional alist)

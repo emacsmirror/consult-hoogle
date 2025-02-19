@@ -270,7 +270,8 @@ by running `cabal-hoogle generate'.  `hoogle-buffer-project-args' can be
 customized to configure an alternate command."
   (interactive (list (read-string "Hoogle: ")
                      (get-buffer-create "*hoogle-search*")))
-  (let ((hoogle-base-args hoogle-base-project-args))
+  (let ((hoogle-base-args hoogle-base-project-args)
+        (default-directory (funcall hoogle-base-project-root-function)))
     (hoogle-buffer query results-buffer)))
 
 (defun hoogle-buffer-web (query results-buffer)
