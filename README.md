@@ -5,6 +5,7 @@ This package wraps the functionality of Haskell search engine. There are two mod
 # Hoogle in a buffer
 *hoogle-buffer* prompts for a query and displays the results in a buffer. The results and the code snippets inside documentation have syntax highlighting. It looks like this:
 ![Screenshot](hoogle-buffer.png)
+
 Use `M-x hoogle-buffer RET` to search the local *hoogle* database.
 `M-x hoogle-buffer-project RET` searches the *hoogle* database specific to current project. By default it requires [cabal-hoogle](https://github.com/kokobd/cabal-hoogle).
 `M-x hoogle-buffer-web RET` uses the json api provided by hoogle hosted at hoogle.haskell.org to fetch search results and shows them in a buffer.
@@ -21,6 +22,7 @@ If the current project has a local hoogle database, you can use `M-x consult-hoo
 
 If you are using [vertico](https://github.com/minad/vertico) along with extensions, then using `vertico-buffer-mode`, the candidates and the documentation window can be arranged to appear side by side.
 ![Screenshot](consult-hoogle-buffer.png)
+
 This will likely require configuring `display-buffer-alist` for `"*vertico-buffer*"` as well as `" *Hoogle Documentation*"`. Using `vertico-buffer-mode` only for this command can be done using `vertico-multiform-mode`.
 
 # Interactive commands
